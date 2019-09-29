@@ -1823,16 +1823,18 @@ class MaskRCNN():
     The actual Keras model is in the keras_model property.
     """
 
-    def __init__(self, mode, config, model_dir):
+    def __init__(self, mode, config, model_dir,save_best_only = False):
         """
         mode: Either "training" or "inference"
         config: A Sub-class of the Config class
         model_dir: Directory to save training logs and trained weights
+        save_best_only: Save Best only model
         """
         assert mode in ['training', 'inference']
         self.mode = mode
         self.config = config
         self.model_dir = model_dir
+        self.save_best_only = save_best_only
         self.set_log_dir()
         self.keras_model = self.build(mode=mode, config=config)
 
@@ -2268,10 +2270,10 @@ class MaskRCNN():
             self.config.NAME.lower(), now))
 
         # Path to save after each epoch. Include placeholders that get filled by Keras.
-        self.checkpoint_path = os.path.join(self.log_dir, "mask_rcnn_{}_*epoch*.h5".format(
+        self.checkpoint_path = os.path.join(self.log_dir, "mask_rcnn_{}_*epoch*_*loss*.h5".format(
             self.config.NAME.lower()))
-        self.checkpoint_path = self.checkpoint_path.replace(
-            "*epoch*", "{epoch:04d}")
+        self.checkpoint_path = self.checkpoint_path.replace( "*epoch*", "{epoch:04d}")
+        self.checkpoint_path = self.checkpoint_path.replace( "*loss*", "{val_loss:.4f}")
 
     def train(self, train_dataset, val_dataset, learning_rate, epochs, layers,
               augmentation=None, custom_callbacks=None, no_augmentation_sources=None):
@@ -2340,7 +2342,7 @@ class MaskRCNN():
             keras.callbacks.TensorBoard(log_dir=self.log_dir,
                                         histogram_freq=0, write_graph=True, write_images=False),
             keras.callbacks.ModelCheckpoint(self.checkpoint_path,
-                                            verbose=0, save_weights_only=True),
+                                            verbose=0, save_best_only=self.save_best_only, save_weights_only=True),
         ]
 
         # Add custom callbacks to the list
